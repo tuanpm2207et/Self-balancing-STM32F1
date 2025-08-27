@@ -1,0 +1,24 @@
+--cpu Cortex-M3
+"xecanbang\startup_stm32f103xb.o"
+"xecanbang\main.o"
+"xecanbang\stm32f1xx_it.o"
+"xecanbang\stm32f1xx_hal_msp.o"
+"xecanbang\stm32f1xx_hal_gpio_ex.o"
+"xecanbang\stm32f1xx_hal_i2c.o"
+"xecanbang\stm32f1xx_hal.o"
+"xecanbang\stm32f1xx_hal_rcc.o"
+"xecanbang\stm32f1xx_hal_rcc_ex.o"
+"xecanbang\stm32f1xx_hal_gpio.o"
+"xecanbang\stm32f1xx_hal_dma.o"
+"xecanbang\stm32f1xx_hal_cortex.o"
+"xecanbang\stm32f1xx_hal_pwr.o"
+"xecanbang\stm32f1xx_hal_flash.o"
+"xecanbang\stm32f1xx_hal_flash_ex.o"
+"xecanbang\stm32f1xx_hal_exti.o"
+"xecanbang\stm32f1xx_hal_tim.o"
+"xecanbang\stm32f1xx_hal_tim_ex.o"
+"xecanbang\system_stm32f1xx.o"
+--strict --scatter "XeCanBang\XeCanBang.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "XeCanBang.map" -o XeCanBang\XeCanBang.axf
