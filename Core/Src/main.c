@@ -51,9 +51,18 @@ int16_t ax = 0, ay = 0 , az = 0, gx = 0 ,gy = 0 , gz = 0;
 float AX,AY,AZ,GX,GY,GZ;
 float pitch = 0;
 float roll = 0;
+/*
+--------2x18650--------
 float Kp = 300;          // (P)roportional Tuning Parameter
 float Ki = 2000;          // (I)ntegral Tuning Parameter        
-float Kd =5;          // (D)erivative Tuning Parameter       
+float Kd =5;          // (D)erivative Tuning Parameter
+-----------------------
+*/
+//--------4x18650 & buck 12v-------------
+float Kp = 330;          // (P)roportional Tuning Parameter
+float Ki = 6000;          // (I)ntegral Tuning Parameter        
+float Kd =4;          // (D)erivative Tuning Parameter  
+//---------------------------------------
 float iTerm = 0;       // Used to accumulate error (integral)
 float lastTime = 0;    // Records the time the function was last called
 float maxPID = 999;    // The maximum value that can be output
