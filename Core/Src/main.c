@@ -51,14 +51,15 @@ int16_t ax = 0, ay = 0 , az = 0, gx = 0 ,gy = 0 , gz = 0;
 float AX,AY,AZ,GX,GY,GZ;
 float pitch = 0;
 float roll = 0;
-float Kp = 25;          // (P)roportional Tuning Parameter
-float Ki = 0;          // (I)ntegral Tuning Parameter        
-float Kd = 0.9;          // (D)erivative Tuning Parameter       
+float Kp = 300;          // (P)roportional Tuning Parameter
+float Ki = 2000;          // (I)ntegral Tuning Parameter        
+float Kd =5;          // (D)erivative Tuning Parameter       
 float iTerm = 0;       // Used to accumulate error (integral)
 float lastTime = 0;    // Records the time the function was last called
 float maxPID = 999;    // The maximum value that can be output
 float oldValue = 0;    // The last sensor value
 float targetValue = 0;
+float pwmDead = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,7 +72,7 @@ static void MX_TIM1_Init(void);
 uint8_t MPU6050Init(void);
 void MPU6050ReadG(void);
 void MPU6050ReadA(void);
-void filter(float AX, float AY, float AZ, float GX, float GY, float GZ);
+void filter(float AX, float AY, float AZ, float GX, float GY, float GZ,uint16_t dt);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -81,7 +82,7 @@ uint8_t MPU6050Init(void){
 	uint8_t mData;
 	HAL_I2C_Mem_Read(&hi2c1,ADD, 0x75,1, &check,1,1000);
 	if(check == 0x68){
-		mData = 0x00;
+		mData = 0x01;
 		HAL_I2C_Mem_Write(&hi2c1, ADD,0x6B,1,&mData,1,1000);
 		mData = 0x07;
 		HAL_I2C_Mem_Write(&hi2c1, ADD,0x19,1,&mData,1,1000);
@@ -114,10 +115,10 @@ void MPU6050ReadA(void){
 	AY = (float)ay/16384.0;
 	AZ = (float)az/16384.0;
 }
-void filter(float AX, float AY, float AZ, float GX, float GY, float GZ){
+void filter(float AX, float AY, float AZ, float GX, float GY, float GZ,uint16_t dt){
 	
-	float pitchG = pitch + GX*(1000/1000000.0f);
-	float rollG = roll + GY*(1000/1000000.0f);
+	float pitchG = pitch + GX*(dt/1000000.0f);
+	float rollG = roll + GY*(dt/1000000.0f);
 	
 	float pitchA = atan2(AY, sqrt(AX*AX + AZ * AZ))*RTD;
 	float rollA = atan2(AX, sqrt(AY*AY + AZ*AZ))*RTD;
@@ -178,16 +179,15 @@ void delayms(uint16_t time){
 		delayus(1000);
 	}
 }
-int16_t pid(float target, float current) {
+int16_t pid(float target, float current,uint16_t dt) {
 	// Calculate the time since function was last called
-	float dT = 0.001;
+	float dT = (float)dt/1000000.0f;
 
 	// Calculate error between target and current values
 	float error = target - current;
 
 	// Calculate the integral term
 	iTerm += error * dT; 
-
 	// Calculate the derivative term (using the simplification)
 	float dTerm = (oldValue - current) / dT;
 
@@ -200,6 +200,8 @@ int16_t pid(float target, float current) {
 	// Limit PID value to maximum values
 	if (result > maxPID) result = maxPID;
 	else if (result < -maxPID) result = -maxPID;
+    if (result > 0 && result < pwmDead) result = pwmDead;
+    if (result < 0 && result > -pwmDead) result = -pwmDead;
 
 	return (int16_t)result;
 }
@@ -242,20 +244,27 @@ int main(void)
 	PWM_Start();
 	HAL_TIM_Base_Start(&htim1);
 	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2,1);
-	delayms(1000);
+	delayms(500);
 	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2,0);
+	uint16_t x = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		x=htim1.Instance->CNT;
+		htim1.Instance->CNT=0;
 		MPU6050ReadG();
 		MPU6050ReadA();
-		filter(AX, AY, AZ, GX, GY, GZ);
-		int16_t pwmvalue = pid(targetValue, roll);
+		filter(AX, AY, AZ, GX, GY, GZ,x);
+		int16_t pwmvalue = pid(targetValue, pitch,x);
 		Update_PWM(pwmvalue);
-		delayms(1);
+		if(pitch > 70 || pitch < -70){
+			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
+			while(1);
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -318,7 +327,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 400000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
